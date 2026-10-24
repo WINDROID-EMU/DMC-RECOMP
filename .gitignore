@@ -1,0 +1,55 @@
+# Game ISO and extracted assets
+*.iso
+/DmC - Devil May Cry.iso
+/game/
+/extracted/
+
+# Unused/reference checkouts
+/xenia-canary/
+
+# Build outputs and host binaries
+/recomp_project/out/
+/recomp_project/cache/
+/recomp_project/user_data/
+/rexglue-sdk/out/
+/rexglue-sdk/build/
+/sdk/out/
+/sdk/build/
+
+# Android build outputs and caches
+**/build/
+android/app/build/
+.gradle/
+**/.gradle/
+**/.cxx/
+**/.android/
+local.properties
+.idea/
+*.iml
+.DS_Store
+
+# Generated backups and analysis temp files
+recomp_project/generated/default_backup/
+recomp_project/*_missing.toml
+recomp_project/all_funcs.toml
+recomp_project/target_funcs.toml
+recomp_project/test_manifest.toml
+
+# Logs and system dumps
+*.log
+*.core
+core.[0-9]*
+*.tmp
+
+# Binaries and object files
+*.o
+*.a
+*.so
+*.apk
+*.aab
+*.dex
+*.pch
+
+# Keep required prebuilt tool binaries
+!rexglue-sdk/tools/binutils/*
+!sdk/tools/binutils/*

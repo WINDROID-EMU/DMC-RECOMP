@@ -1,0 +1,21 @@
+{
+  "fingerprint": "5f6d6056dae93219fdf0dcad4a4af94e",
+  "outputs": [
+    "codegen.partition.json",
+    "dmc_funcs.0.h",
+    "dmc_funcs.1.h",
+    "dmc_funcs.2.h",
+    "dmc_funcs.3.h",
+    "dmc_funcs.h",
+    "dmc_init.cpp",
+    "dmc_init.h",
+    "dmc_pch.h",
+    "dmc_recomp.0.cpp",
+    "dmc_recomp.1.cpp",
+    "dmc_recomp.2.cpp",
+    "dmc_recomp.3.cpp",
+    "dmc_register.cpp",
+    "sources.cmake"
+  ],
+  "version": 1
+}
