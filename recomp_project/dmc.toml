@@ -3,11 +3,11 @@ log_level = "warn"
 log_noisy = false
 fullscreen = false
 gpu_plugin = "xenos"
-render_target_path_vulkan = "fsi"
+render_target_path_vulkan = "fbo"
 gpu_allow_invalid_fetch_constants = true
 
 # --- Anti-Stutter / Shader Compilation Optimization ---
-vulkan_async_skip_incomplete_frames = false
+vulkan_async_skip_incomplete_frames = true
 async_shader_compilation = true
 vulkan_pipeline_creation_threads = 6
 store_shaders = true
@@ -15,3 +15,4 @@ primitive_processor_cache_min_indices = -1
 vulkan_dynamic_rendering = false
 mrt_edram_used_range_clamp_to_min = true
 direct_host_resolve = true
+vsync = true

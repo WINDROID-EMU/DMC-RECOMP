@@ -80,7 +80,7 @@ public final class GameActivity extends SDLActivity implements InputManager.Inpu
         }
         int fps = 60;
         try {
-            fps = Integer.parseInt(GameOptions.get(this, GameOptions.FPS));
+            fps = (int) Double.parseDouble(GameOptions.get(this, GameOptions.FPS));
         } catch (Exception ignored) { }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -137,7 +137,8 @@ public final class GameActivity extends SDLActivity implements InputManager.Inpu
         args.add("--user_data_root=" + userRoot);
         args.add("--cache_root=" + cacheRoot);
         args.add("--gpu_plugin=xenos");
-        args.add("--vulkan_async_skip_incomplete_frames=false");
+        args.add("--async_shader_compilation=true");
+        args.add("--gpu_allow_invalid_fetch_constants=true");
         args.addAll(GameOptions.arguments(this));
         if (getSharedPreferences("dmc_controls", MODE_PRIVATE).getBoolean("stretch", true)) {
             args.add("--present_letterbox=false");
