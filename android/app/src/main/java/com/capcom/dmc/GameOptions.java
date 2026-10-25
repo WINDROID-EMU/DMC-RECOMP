@@ -42,6 +42,7 @@ final class GameOptions {
     static final String VULKAN_THREADS = "vulkan_threads";
     static final String RESOLUTION_SCALE = "resolution_scale";
     static final String FPS = "fps";
+    static final String SHOW_FPS = "show_fps";
     static final String VSYNC = "vsync";
     static final String STORE_SHADERS = "store_shaders";
     static final String POST_EFFECT = "swap_post_effect";
@@ -50,6 +51,9 @@ final class GameOptions {
             new Option(RENDER_TARGET_PATH, "Modo Render Target (Vulkan)", "render_target_path_vulkan", "fbo",
                     new String[] {"fbo", "fsi"},
                     new String[] {"FBO · Alto Desempenho (Hardware GMEM)", "FSI · Lento (Software Interlock)"}),
+            new Option(SHOW_FPS, "Contador de FPS na Tela", "show_fps", "true",
+                    new String[] {"true", "false"},
+                    new String[] {"Ativado (Exibe FPS em tempo real)", "Desativado"}),
             new Option(VULKAN_ASYNC_SKIP, "Anti-Stutter de Shaders", "vulkan_async_skip_incomplete_frames", "true",
                     new String[] {"true", "false"},
                     new String[] {"Ativado · Fluido (Pula quadros incompletos)", "Desativado · Síncrono (Congela a tela)"}),

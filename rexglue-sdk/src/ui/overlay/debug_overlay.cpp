@@ -39,6 +39,7 @@ void DebugOverlayDialog::OnDraw(ImGuiIO& io) {
         ImGui::Text("Guest: %.1f FPS (%.2f ms)", stats.fps, stats.frame_time_ms);
       }
     }
+    ImGui::Text("FPS: %.1f (%.2f ms)", io.Framerate, 1000.0f / (io.Framerate > 0 ? io.Framerate : 60.0f));
 #ifdef REXGLUE_ENABLE_PERF_COUNTERS
     ImGui::Separator();
 

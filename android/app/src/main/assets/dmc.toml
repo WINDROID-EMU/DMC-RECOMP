@@ -16,3 +16,4 @@ vulkan_dynamic_rendering = false
 mrt_edram_used_range_clamp_to_min = true
 direct_host_resolve = true
 vsync = true
+show_fps = true

@@ -3,19 +3,28 @@ package com.capcom.dmc;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.hardware.input.InputManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Choreographer;
 import android.view.Display;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 
 import org.libsdl.app.SDLActivity;
 
@@ -30,6 +39,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * GameActivity running ReXGlue + SDL3 + Vulkan backend for DmC Devil May Cry.
@@ -65,6 +75,7 @@ public final class GameActivity extends SDLActivity implements InputManager.Inpu
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         super.onCreate(state);
         useWholeScreen();
+        setupFpsCounter();
 
         inputManager = (InputManager) getSystemService(Context.INPUT_SERVICE);
     }
@@ -248,5 +259,74 @@ public final class GameActivity extends SDLActivity implements InputManager.Inpu
             hex.append(String.format("%02x", b));
         }
         return hex.toString();
+    }
+
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private TextView fpsOverlay;
+    private long lastFpsUpdate = 0;
+    private int fpsFrameCount = 0;
+
+    private void setupFpsCounter() {
+        if (!"true".equals(GameOptions.get(this, GameOptions.SHOW_FPS))) {
+            return;
+        }
+        mainHandler.postDelayed(this::attachFpsView, 800);
+    }
+
+    private void attachFpsView() {
+        if (isFinishing() || isDestroyed()) return;
+        ViewGroup layout = mLayout;
+        if (layout == null) {
+            mainHandler.postDelayed(this::attachFpsView, 400);
+            return;
+        }
+        if (fpsOverlay != null && fpsOverlay.getParent() != null) return;
+
+        fpsOverlay = new TextView(this);
+        fpsOverlay.setText("FPS: --");
+        fpsOverlay.setTextColor(0xFF00FF66);
+        fpsOverlay.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        fpsOverlay.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        int padH = dp(8);
+        int padV = dp(3);
+        fpsOverlay.setPadding(padH, padV, padH, padV);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0x88000000);
+        bg.setCornerRadius(dp(5));
+        fpsOverlay.setBackground(bg);
+
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        params.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        params.addRule(RelativeLayout.ALIGN_PARENT_END);
+        params.topMargin = dp(10);
+        params.rightMargin = dp(14);
+        layout.addView(fpsOverlay, params);
+
+        Choreographer.getInstance().postFrameCallback(new Choreographer.FrameCallback() {
+            @Override
+            public void doFrame(long frameTimeNanos) {
+                if (isFinishing() || isDestroyed()) return;
+                fpsFrameCount++;
+                long now = System.currentTimeMillis();
+                if (lastFpsUpdate == 0) {
+                    lastFpsUpdate = now;
+                } else if (now - lastFpsUpdate >= 500) {
+                    float currentFps = (fpsFrameCount * 1000.0f) / (now - lastFpsUpdate);
+                    float ms = 1000.0f / (currentFps > 0 ? currentFps : 60.0f);
+                    if (fpsOverlay != null) {
+                        fpsOverlay.setText(String.format(Locale.US, "%.1f FPS (%.1f ms)", currentFps, ms));
+                    }
+                    fpsFrameCount = 0;
+                    lastFpsUpdate = now;
+                }
+                Choreographer.getInstance().postFrameCallback(this);
+            }
+        });
+    }
+
+    private int dp(int value) {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics());
     }
 }
