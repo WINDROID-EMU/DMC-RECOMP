@@ -6,6 +6,7 @@
 
 # Unused/reference checkouts
 /xenia-canary/
+/tools/
 
 # Build outputs and host binaries
 /recomp_project/out/

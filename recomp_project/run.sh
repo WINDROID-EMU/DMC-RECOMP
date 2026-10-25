@@ -68,6 +68,6 @@ exec "${EXECUTABLE}" \
     --user_data_root="${SCRIPT_DIR}/user_data" \
     --cache_root="${SCRIPT_DIR}/cache" \
     --gpu_plugin=xenos \
-    --render_target_path_vulkan=fsi \
+    --render_target_path_vulkan=fbo \
     --gpu_allow_invalid_fetch_constants=true \
     "$@"

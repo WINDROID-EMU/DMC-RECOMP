@@ -61,6 +61,7 @@ public final class GameActivity extends SDLActivity implements InputManager.Inpu
             Log.w(TAG, "REX_APP_FOLDER", e);
         }
         installSettings();
+        installPrecompiledShaders();
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         super.onCreate(state);
         useWholeScreen();
@@ -204,6 +205,30 @@ public final class GameActivity extends SDLActivity implements InputManager.Inpu
             prefs.edit().putString("settings_sha256", bundledHash).apply();
         } catch (IOException | NoSuchAlgorithmException e) {
             Log.w(TAG, "No se pudo instalar " + SETTINGS, e);
+        }
+    }
+
+    private void installPrecompiledShaders() {
+        File shareableDir = new File(cacheRoot, "shaders/shareable");
+        shareableDir.mkdirs();
+        String[] shaderFiles = new String[] { "43430824.xsh", "43430824.fbo.vk.xpso" };
+        for (String fileName : shaderFiles) {
+            File target = new File(shareableDir, fileName);
+            try (InputStream in = getAssets().open("shaders/shareable/" + fileName)) {
+                int assetSize = in.available();
+                if (!target.exists() || target.length() < assetSize) {
+                    try (OutputStream out = new FileOutputStream(target)) {
+                        byte[] buffer = new byte[65536];
+                        int n;
+                        while ((n = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, n);
+                        }
+                    }
+                    Log.i(TAG, "Instalado cache precompilado de shaders: " + fileName + " (" + target.length() + " bytes)");
+                }
+            } catch (IOException e) {
+                // Shader file optional or already installed
+            }
         }
     }
 
