@@ -98,7 +98,9 @@ target_include_directories(rexcore PRIVATE
     ${PROJECT_SOURCE_DIR}/thirdparty/cli11/include
 )
 
-if(APPLE)
+if(ANDROID)
+    target_link_libraries(rexcore PRIVATE dl log)
+elseif(APPLE)
     target_link_libraries(rexcore PRIVATE pthread)
 elseif(UNIX)
     target_link_libraries(rexcore PRIVATE pthread rt dl)

@@ -15,7 +15,10 @@ set(DMC_SOURCES
     src/main.cpp
 )
 
-if(WIN32)
+if(ANDROID)
+    add_library(dmc SHARED ${DMC_SOURCES})
+    set_target_properties(dmc PROPERTIES OUTPUT_NAME main)
+elseif(WIN32)
     add_executable(dmc WIN32 ${DMC_SOURCES})
 else()
     add_executable(dmc ${DMC_SOURCES})

@@ -61,7 +61,7 @@ public final class GameActivity extends SDLActivity implements InputManager.Inpu
             Log.w(TAG, "REX_APP_FOLDER", e);
         }
         installSettings();
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         super.onCreate(state);
         useWholeScreen();
 
@@ -70,7 +70,7 @@ public final class GameActivity extends SDLActivity implements InputManager.Inpu
 
     @Override
     public void setOrientationBis(int w, int h, boolean resizable, String hint) {
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
     }
 
     private void useWholeScreen() {
@@ -122,7 +122,10 @@ public final class GameActivity extends SDLActivity implements InputManager.Inpu
     @Override
     protected String[] getLibraries() {
         return new String[] {
-            "SDL3d",
+            "c++_shared",
+            "rexruntime",
+            "rexgpu-xenos",
+            "dmc_NTJobCode",
             "main"
         };
     }

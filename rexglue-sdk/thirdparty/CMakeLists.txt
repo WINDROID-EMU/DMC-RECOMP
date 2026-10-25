@@ -64,7 +64,8 @@ if(REXGLUE_BUILD_TESTS)
 endif()
 
 foreach(submodule ${REQUIRED_SUBMODULES})
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${submodule}/.git")
+    file(GLOB _submodule_files "${CMAKE_CURRENT_SOURCE_DIR}/${submodule}/*")
+    if(NOT _submodule_files)
         message(FATAL_ERROR
             "Git submodule '${submodule}' is not initialized.\n"
             "Please run: git submodule update --init --recursive\n"

@@ -32,8 +32,12 @@ final class GpuDrivers {
                 if (!library.matches("[A-Za-z0-9_.+-]+\\.so")) continue;
                 File loadDir = new File(dir, meta.getString("folder"));
                 if (!loadDir.getCanonicalPath().startsWith(dir.getCanonicalPath() + "/")) continue;
-                if (new File(loadDir, library).isFile())
+                if (new File(loadDir, library).isFile()) {
+                    File libFile = new File(loadDir, library);
+                    libFile.setExecutable(true, false);
+                    libFile.setReadable(true, false);
                     result.add(new Driver(dir.getName(), meta.getString("name"), loadDir, library));
+                }
             } catch (Exception ignored) { }
         }
         result.sort(Comparator.comparing(d -> d.name.toLowerCase(Locale.ROOT)));
@@ -101,8 +105,14 @@ final class GpuDrivers {
     }
     private static void readOnly(File file) throws IOException {
         File[] children = file.listFiles();
-        if (children != null) for (File child : children) readOnly(child);
-        else if (!file.setReadOnly()) throw new IOException("No se pudo proteger la biblioteca del driver.");
+        if (children != null) {
+            for (File child : children) readOnly(child);
+            file.setExecutable(true, false);
+        } else {
+            file.setExecutable(true, false);
+            file.setReadable(true, false);
+            file.setWritable(false, false);
+        }
     }
     static void remove(Context context, Driver driver) throws IOException {
         File target = new File(root(context), driver.id);

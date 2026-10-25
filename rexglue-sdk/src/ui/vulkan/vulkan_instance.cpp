@@ -25,6 +25,15 @@
 #include "vulkan_moltenvk.h"
 #endif
 
+#if REX_PLATFORM_ANDROID
+#include <rex/ui/vulkan/android_gpu_driver.h>
+
+REXCVAR_DEFINE_STRING(android_gpu_driver_dir, "", "Android", "Custom GPU driver directory");
+REXCVAR_DEFINE_STRING(android_gpu_driver_name, "", "Android", "Custom GPU driver library name");
+REXCVAR_DEFINE_STRING(android_native_lib_dir, "", "Android", "Native library directory for adrenotools hooks");
+REXCVAR_DEFINE_STRING(android_tmp_dir, "", "Android", "Temporary directory for adrenotools");
+#endif
+
 REXCVAR_DEFINE_BOOL(vulkan_log_debug_messages, true, "UI/Vulkan", "Log Vulkan debug messages");
 
 namespace rex {
@@ -73,6 +82,32 @@ std::unique_ptr<VulkanInstance> VulkanInstance::Create(const bool with_surface,
       REXLOG_ERROR("* tried {}", attempted_loader_path);
     }
     return nullptr;
+  }
+#elif REX_PLATFORM_ANDROID
+  const std::string& driver_dir = REXCVAR_GET(android_gpu_driver_dir);
+  const std::string& driver_name = REXCVAR_GET(android_gpu_driver_name);
+  if (!driver_dir.empty() && !driver_name.empty()) {
+    REXLOG_INFO("Attempting to load custom Vulkan driver {} from {}",
+                driver_name, driver_dir);
+    void* handle = rex_android_open_vulkan(
+        REXCVAR_GET(android_native_lib_dir).c_str(),
+        REXCVAR_GET(android_tmp_dir).c_str(),
+        driver_dir.c_str(),
+        driver_name.c_str());
+    if (handle) {
+      vulkan_instance->loader_.Attach(handle);
+      loader_loaded = true;
+      REXLOG_INFO("Loaded custom Vulkan driver successfully via AdrenoTools");
+    } else {
+      REXLOG_ERROR("Failed to load custom Vulkan driver via AdrenoTools, falling back to system Vulkan");
+    }
+  }
+  if (!loader_loaded) {
+    loader_loaded = vulkan_instance->loader_.Load(platform::lib_names::kVulkanLoader);
+    if (!loader_loaded) {
+      REXLOG_ERROR("Failed to load {}", platform::lib_names::kVulkanLoader);
+      return nullptr;
+    }
   }
 #else
   loader_loaded = vulkan_instance->loader_.Load(platform::lib_names::kVulkanLoader);

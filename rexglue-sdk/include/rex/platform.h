@@ -60,6 +60,15 @@
 #define REX_PLATFORM_LINUX 0
 #endif
 
+#if REX_PLATFORM_ANDROID
+#include <android/api-level.h>
+namespace rex {
+inline int GetAndroidApiLevel() {
+  return android_get_device_api_level();
+}
+}  // namespace rex
+#endif
+
 #if defined(__clang__)
 #define REX_COMPILER_CLANG 1
 #elif defined(__GNUC__)

@@ -50,11 +50,11 @@
 
 #include <dlfcn.h>
 #include <sys/ioctl.h>
+#include <sys/syscall.h>
 
 #include <linux/ashmem.h>
-
-// TODO(tomc): Android or maybe na. idk
-// #include "xenia/base/main_android.h"
+#include <fmt/format.h>
+#include <rex/filesystem.h>
 #endif
 
 namespace rex {
@@ -91,13 +91,14 @@ static void* libandroid_;
 static int (*android_ASharedMemory_create_)(const char* name, size_t size);
 
 void AndroidInitialize() {
+  if (libandroid_) {
+    return;
+  }
   if (rex::GetAndroidApiLevel() >= 26) {
     libandroid_ = dlopen("libandroid.so", RTLD_NOW);
-    assert_not_null(libandroid_);
     if (libandroid_) {
       android_ASharedMemory_create_ = reinterpret_cast<decltype(android_ASharedMemory_create_)>(
           dlsym(libandroid_, "ASharedMemory_create"));
-      assert_not_null(android_ASharedMemory_create_);
     }
   }
 }
@@ -432,28 +433,87 @@ bool QueryProtect(void* base_address, size_t& length, PageAccess& access_out) {
 FileMappingHandle CreateFileMappingHandle(const std::filesystem::path& path, size_t length,
                                           PageAccess access, bool commit) {
 #if REX_PLATFORM_ANDROID
-  // TODO(Triang3l): Check if memfd can be used instead on API 30+.
-  if (android_ASharedMemory_create_) {
-    int sharedmem_fd = android_ASharedMemory_create_(path.c_str(), length);
-    return sharedmem_fd >= 0 ? static_cast<FileMappingHandle>(sharedmem_fd)
-                             : kFileMappingHandleInvalid;
+  if (!android_ASharedMemory_create_) {
+    AndroidInitialize();
   }
 
-  // Use /dev/ashmem on API versions below 26, which added ASharedMemory.
-  // /dev/ashmem was disabled on API 29 for apps targeting it.
-  // https://chromium.googlesource.com/chromium/src/+/master/third_party/ashmem/ashmem-dev.c
+  // 1. Try ASharedMemory_create (standard Android API 26+)
+  if (android_ASharedMemory_create_) {
+    std::string clean_name = path.filename().string();
+    if (clean_name.size() > 7 && rex::GetAndroidApiLevel() < 29) {
+      clean_name.resize(7);
+    }
+    int sharedmem_fd = android_ASharedMemory_create_(clean_name.c_str(), length);
+    if (sharedmem_fd >= 0) {
+      return static_cast<FileMappingHandle>(sharedmem_fd);
+    }
+    REXLOG_WARN("ASharedMemory_create('{}', {}) failed: errno {} ({})", clean_name, length,
+                errno, std::strerror(errno));
+  }
+
+  // 2. Try memfd_create (Linux 3.17+ / Android modern kernels)
+#if defined(__NR_memfd_create) || defined(SYS_memfd_create)
+  #ifndef SYS_memfd_create
+  #define SYS_memfd_create __NR_memfd_create
+  #endif
+  #ifndef MFD_CLOEXEC
+  #define MFD_CLOEXEC 0x0001U
+  #endif
+  #ifndef MFD_ALLOW_SEALING
+  #define MFD_ALLOW_SEALING 0x0002U
+  #endif
+  int memfd = static_cast<int>(syscall(SYS_memfd_create, "rexmem", MFD_CLOEXEC | MFD_ALLOW_SEALING));
+  if (memfd >= 0) {
+    if (rex_ftruncate64(memfd, static_cast<off_t>(length)) == 0) {
+      return static_cast<FileMappingHandle>(memfd);
+    }
+    REXLOG_WARN("memfd_create ftruncate({}) failed: errno {} ({})", length, errno,
+                std::strerror(errno));
+    close(memfd);
+  }
+#endif
+
+  // 3. Fallback: anonymous unlinked temporary file on internal storage (which has tens of GBs)
+  std::vector<std::filesystem::path> candidate_dirs;
+  auto user_folder = rex::filesystem::GetUserFolder();
+  if (!user_folder.empty()) {
+    candidate_dirs.push_back(user_folder / "cache");
+    candidate_dirs.push_back(user_folder);
+  }
+  candidate_dirs.push_back("/data/data/com.capcom.dmc/cache");
+  candidate_dirs.push_back("/data/data/com.capcom.dmc");
+  candidate_dirs.push_back("/sdcard/dmc-androidevolved");
+  candidate_dirs.push_back("/data/local/tmp");
+
+  for (const auto& dir : candidate_dirs) {
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    std::string temp_file = (dir / fmt::format("rexmem_{}_{}.tmp", getpid(), path.filename().string())).string();
+    int fd = open(temp_file.c_str(), O_RDWR | O_CREAT | O_EXCL, 0600);
+    if (fd >= 0) {
+      unlink(temp_file.c_str());  // Immediately unlinked: auto-freed when closed
+      if (rex_ftruncate64(fd, static_cast<off_t>(length)) == 0) {
+        REXLOG_INFO("Created sparse backing memory file in '{}'", dir.string());
+        return static_cast<FileMappingHandle>(fd);
+      }
+      close(fd);
+    }
+  }
+
+  // 4. Legacy /dev/ashmem fallback
   int ashmem_fd = open("/" ASHMEM_NAME_DEF, O_RDWR);
-  if (ashmem_fd < 0) {
-    return kFileMappingHandleInvalid;
-  }
-  char ashmem_name[ASHMEM_NAME_LEN];
-  strlcpy(ashmem_name, path.c_str(), rex::countof(ashmem_name));
-  if (ioctl(ashmem_fd, ASHMEM_SET_NAME, ashmem_name) < 0 ||
-      ioctl(ashmem_fd, ASHMEM_SET_SIZE, length) < 0) {
+  if (ashmem_fd >= 0) {
+    char ashmem_name[ASHMEM_NAME_LEN];
+    strlcpy(ashmem_name, path.c_str(), rex::countof(ashmem_name));
+    if (ioctl(ashmem_fd, ASHMEM_SET_NAME, ashmem_name) >= 0 &&
+        ioctl(ashmem_fd, ASHMEM_SET_SIZE, length) >= 0) {
+      return static_cast<FileMappingHandle>(ashmem_fd);
+    }
     close(ashmem_fd);
-    return kFileMappingHandleInvalid;
   }
-  return static_cast<FileMappingHandle>(ashmem_fd);
+
+  REXLOG_ERROR("CreateFileMappingHandle failed to create backing memory for size {}", length);
+  return kFileMappingHandleInvalid;
 #else
   int oflag;
   switch (access) {

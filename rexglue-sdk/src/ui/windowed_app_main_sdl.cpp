@@ -124,6 +124,17 @@ int WINAPI wWinMain(HINSTANCE hinstance, HINSTANCE hinstance_prev, LPWSTR comman
   return RunWindowedApp(static_cast<int>(argv_ptrs.size()), argv_ptrs.data());
 }
 
+#elif REX_PLATFORM_ANDROID
+
+extern "C" void dmc_android_nucleos_grandes_aplicar() __attribute__((weak));
+
+extern "C" __attribute__((visibility("default"))) int SDL_main(int argc, char* argv[]) {
+  if (dmc_android_nucleos_grandes_aplicar) {
+    dmc_android_nucleos_grandes_aplicar();
+  }
+  return RunWindowedApp(argc, argv);
+}
+
 #else
 
 int main(int argc, char* argv[]) {

@@ -142,8 +142,13 @@ bool ReXApp::SetupEnvironment() {
     metadata_dir = metadata_root_cvar;
   }
 
+#if REX_PLATFORM_ANDROID
+  PathConfig path_config{game_dir,  user_dir,     update_dir,
+                         cache_dir, metadata_dir, user_dir / (std::string(GetName()) + ".toml")};
+#else
   PathConfig path_config{game_dir,  user_dir,     update_dir,
                          cache_dir, metadata_dir, exe_dir / (std::string(GetName()) + ".toml")};
+#endif
   OnConfigurePaths(path_config);
   game_data_root_ = path_config.game_data_root;
   user_data_root_ = path_config.user_data_root;
@@ -168,7 +173,11 @@ bool ReXApp::SetupEnvironment() {
                                         log_level_str, category_levels);
   if (log_file_cvar.empty()) {
     log_config.app_name = std::string(GetName());
+#if REX_PLATFORM_ANDROID
+    log_config.log_dir = (user_dir / "logs").string();
+#else
     log_config.log_dir = (exe_dir / "logs").string();
+#endif
   }
 
   rex::InitLogging(log_config);

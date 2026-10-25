@@ -32,6 +32,10 @@ class DynamicLibrary {
 
   bool Load(const std::filesystem::path& path, SymbolResolution mode = SymbolResolution::kLazy);
   void Close();
+  void Attach(void* handle) {
+    Close();
+    handle_ = handle;
+  }
   explicit operator bool() const { return handle_ != nullptr; }
 
   void* GetRawSymbol(const char* name) const;

@@ -23,8 +23,10 @@ std::string Probe(const char* hooks, const char* temp, const char* directory, co
     void* handle;
     ~Loader() { if (handle) dlclose(handle); }
   } loader{rex_android_open_vulkan(hooks, temp, directory, library)};
-  if (!loader.handle)
-    return "{\"driverLoadFailed\":true,\"probeError\":\"No se pudo abrir el driver seleccionado\"}";
+  if (!loader.handle) {
+    const char* err = dlerror();
+    return "{\"driverLoadFailed\":true,\"probeError\":" + Json(err ? err : "No se pudo abrir el driver seleccionado") + "}";
+  }
   auto vkGetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(dlsym(loader.handle, "vkGetInstanceProcAddr"));
   if (!vkGetInstanceProcAddr)
     return "{\"driverLoadFailed\":true,\"probeError\":\"El paquete no ofrece vkGetInstanceProcAddr\"}";

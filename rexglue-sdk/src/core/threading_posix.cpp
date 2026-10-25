@@ -44,8 +44,6 @@ static_assert(REX_PLATFORM_LINUX || REX_PLATFORM_MAC, "This file is POSIX-only")
 
 #if REX_PLATFORM_ANDROID
 #include <dlfcn.h>
-
-#include <rex/main_android.h>
 #include <rex/string.h>
 #endif
 
@@ -270,7 +268,7 @@ static sem_t* RexCreateAnonymousSemaphore() {
 class PosixConditionBase {
  public:
   PosixConditionBase() {
-#if REX_PLATFORM_LINUX
+#if REX_PLATFORM_LINUX && !REX_PLATFORM_ANDROID
     // Use robust mutexes so waits can recover if owner thread terminates.
     pthread_mutexattr_t attr;
     if (pthread_mutexattr_init(&attr) == 0) {
@@ -290,7 +288,7 @@ class PosixConditionBase {
   WaitResult Wait(std::chrono::milliseconds timeout) {
     bool executed;
     auto predicate = [this] { return this->signaled(); };
-#if REX_PLATFORM_LINUX
+#if REX_PLATFORM_LINUX && !REX_PLATFORM_ANDROID
     auto native_mutex = static_cast<pthread_mutex_t*>(mutex_.native_handle());
     int lock_result = pthread_mutex_lock(native_mutex);
     if (lock_result == EOWNERDEAD) {
@@ -344,7 +342,7 @@ class PosixConditionBase {
       locks.reserve(handles.size());
 
       for (size_t i = 0; i < handles.size(); ++i) {
-#if REX_PLATFORM_LINUX
+#if REX_PLATFORM_LINUX && !REX_PLATFORM_ANDROID
         auto native_mutex = static_cast<pthread_mutex_t*>(handles[i]->mutex_.native_handle());
         int result = pthread_mutex_trylock(native_mutex);
         if (result == 0 || result == EOWNERDEAD) {
@@ -694,9 +692,21 @@ class PosixCondition<Thread> : public PosixConditionBase {
   }
 
   virtual ~PosixCondition() {
-    // Match Canary/Edge behavior.
-    // Force-cancel/join from the condition destructor can self-join/crash
-    // depending on shutdown ordering, so threads must be stopped explicitly.
+    if (thread_) {
+      pthread_t t = thread_;
+      thread_ = 0;
+      if (t != pthread_self()) {
+        pthread_join(t, nullptr);
+      }
+    }
+#if defined(__APPLE__)
+    if (suspend_sem_ != SEM_FAILED) {
+      sem_close(suspend_sem_);
+      suspend_sem_ = SEM_FAILED;
+    }
+#else
+    sem_destroy(&suspend_sem_);
+#endif
   }
 
   bool Signal() override { return true; }
@@ -1014,17 +1024,9 @@ class PosixCondition<Thread> : public PosixConditionBase {
   static void* ThreadStartRoutine(void* parameter);
   inline bool signaled() const override { return signaled_; }
   inline void post_execution() override {
-    if (thread_) {
-      pthread_join(thread_, nullptr);
-    }
-#if defined(__APPLE__)
-    if (suspend_sem_ != SEM_FAILED) {
-      sem_close(suspend_sem_);
-      suspend_sem_ = SEM_FAILED;
-    }
-#else
-    sem_destroy(&suspend_sem_);
-#endif
+    // Thread signaling is persistent like a manual-reset event;
+    // waiting on an already-terminated guest thread must not destroy internal
+    // synchronization primitives nor repeatedly attempt pthread_join.
   }
   pthread_t thread_;
   bool signaled_;

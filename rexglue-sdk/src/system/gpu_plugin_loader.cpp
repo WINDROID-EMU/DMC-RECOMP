@@ -54,7 +54,14 @@ std::vector<platform::DynamicLibrary>& LoadedPlugins() {
 
 }  // namespace
 
+#if !defined(_WIN32)
+#include <dlfcn.h>
+#endif
+
 std::unique_ptr<IGraphicsSystem> LoadGpuPlugin(std::string_view name, std::string_view backend) {
+#if REX_PLATFORM_ANDROID
+  auto path = std::filesystem::path(PluginFileName(name));
+#else
   auto path = rex::filesystem::GetExecutableFolder() / PluginFileName(name);
   if (!std::filesystem::exists(path)) {
     REXSYS_ERROR(
@@ -63,10 +70,17 @@ std::unique_ptr<IGraphicsSystem> LoadGpuPlugin(std::string_view name, std::strin
         name, path.string(), name);
     return nullptr;
   }
+#endif
 
   platform::DynamicLibrary library;
   if (!library.Load(path, platform::SymbolResolution::kImmediate)) {
+#if !defined(_WIN32)
+    const char* err = dlerror();
+    REXSYS_ERROR("GPU plugin '{}' failed to load: {} (dlerror: {})", name, path.string(),
+                 err ? err : "unknown");
+#else
     REXSYS_ERROR("GPU plugin '{}' failed to load: {}", name, path.string());
+#endif
     return nullptr;
   }
 

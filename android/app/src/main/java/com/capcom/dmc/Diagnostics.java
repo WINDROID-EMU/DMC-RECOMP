@@ -42,8 +42,12 @@ final class Diagnostics {
     static String probeSelectedDriver(Context context) {
         System.loadLibrary("dmc_diagnostics");
         GpuDrivers.Driver driver = GpuDrivers.selected(context);
+        String dir = (driver == null ? "" : driver.directory.getAbsolutePath());
+        if (!dir.isEmpty() && !dir.endsWith("/")) {
+            dir += "/";
+        }
         return nativeGpuReport(context.getApplicationInfo().nativeLibraryDir, context.getCacheDir().getAbsolutePath(),
-                driver == null ? "" : driver.directory.getAbsolutePath(), driver == null ? "" : driver.library);
+                dir, driver == null ? "" : driver.library);
     }
     static synchronized JSONObject gpu(Context context) {
         android.content.SharedPreferences prefs = context.getSharedPreferences("dmc_diagnostics", 0);

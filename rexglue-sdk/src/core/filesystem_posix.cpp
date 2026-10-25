@@ -302,5 +302,16 @@ std::vector<FileInfo> ListFiles(const std::filesystem::path& path) {
   return result;
 }
 
+#if REX_PLATFORM_ANDROID
+void AndroidInitialize() {}
+void AndroidShutdown() {}
+bool IsAndroidContentUri(const std::string_view source) {
+  return source.rfind("content://", 0) == 0;
+}
+int OpenAndroidContentFileDescriptor(const std::string_view /*uri*/, const char* /*mode*/) {
+  return -1;
+}
+#endif  // REX_PLATFORM_ANDROID
+
 }  // namespace filesystem
 }  // namespace rex

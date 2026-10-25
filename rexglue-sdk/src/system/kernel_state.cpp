@@ -23,6 +23,9 @@
 #include <rex/runtime.h>
 #include <rex/stream.h>
 #include <rex/thread/atomic.h>
+#if !defined(_WIN32)
+#include <dlfcn.h>
+#endif
 #include <rex/string.h>
 #include <rex/kernel/xboxkrnl/threading.h>
 #include <rex/system/kernel_module.h>
@@ -761,7 +764,13 @@ object_ref<UserModule> KernelState::LoadUserModule(const std::string_view raw_na
     rex::platform::DynamicLibrary library_local;
     if (!library_local.Load(std::filesystem::path(recomp->shared_lib_name),
                             rex::platform::SymbolResolution::kImmediate)) {
+#if !defined(_WIN32)
+      const char* err = dlerror();
+      REXSYS_ERROR("Failed to load shared library for module '{}': {}", recomp->pe_name,
+                   err ? err : "unknown");
+#else
       REXSYS_ERROR("Failed to load shared library for module '{}'", recomp->pe_name);
+#endif
     } else {
       auto register_func = reinterpret_cast<runtime::FunctionDispatcher::RegisterFn>(
           library_local.GetRawSymbol("ReXModule_Register"));

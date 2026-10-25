@@ -27,6 +27,33 @@ namespace rex::thread {
 
 thread_local Fiber* Fiber::tls_current_ = nullptr;
 
+#if REX_PLATFORM_ANDROID
+
+Fiber* Fiber::ConvertCurrentThread() {
+  auto* f = new Fiber();
+  f->is_thread_fiber_ = true;
+  tls_current_ = f;
+  return f;
+}
+
+Fiber* Fiber::Create(size_t /*stack_size*/, void (* /*entry*/)(void*), void* /*arg*/) {
+  assert(false && "Fibers are not supported on Android");
+  return nullptr;
+}
+
+void Fiber::SwitchTo(Fiber* /*target*/) {
+  assert(false && "Fibers are not supported on Android");
+}
+
+void Fiber::Destroy() {
+  if (is_thread_fiber_) {
+    tls_current_ = nullptr;
+  }
+  delete this;
+}
+
+#else
+
 Fiber* Fiber::ConvertCurrentThread() {
   auto* f = new Fiber();
   if (getcontext(&f->context_) == -1) {
@@ -78,6 +105,8 @@ void Fiber::Destroy() {
   // No POSIX equivalent of ConvertFiberToThread; stack_ is freed by the vector destructor.
   delete this;
 }
+
+#endif  // REX_PLATFORM_ANDROID
 
 }  // namespace rex::thread
 

@@ -72,11 +72,15 @@ LogConfig g_config;
 
 std::filesystem::path NextSequentialLogPath(const std::filesystem::path& logs_dir,
                                             std::string_view app_name) {
-  std::filesystem::create_directories(logs_dir);
+  std::error_code ec;
+  std::filesystem::create_directories(logs_dir, ec);
+  if (ec) {
+    return {};
+  }
 
   int max_seq = 0;
   std::string prefix = std::string(app_name) + "_";
-  std::error_code ec;
+  ec.clear();
   for (const auto& entry : std::filesystem::directory_iterator(logs_dir, ec)) {
     if (!entry.is_regular_file())
       continue;
